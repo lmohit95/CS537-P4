@@ -12,17 +12,13 @@
 #include "udp.h"
 #include "packets.h"
 
-void print_INODE(INODE *n);
-void print_dirBlock(int block);
-void print_CR();
-
 typedef struct __buf {
 	char string [BLOCKSIZE/sizeof(char)];
 } buf;
 int newFS;
 
 int inodemap[NINODES/16][16];			// block number of each INODE
-int nextBlock;					// next block in the address space to be written
+int log_end;					// next block in the address space to be written
 int fd;										// the file descriptor of the LFS
 
 void update_CPR_inode_num(int INODE_num, int block){
@@ -31,8 +27,6 @@ void update_CPR_inode_num(int INODE_num, int block){
 int get_CPR_inode_num(int INODE_num){
 	return inodemap[INODE_num/16][INODE_num%16];
 }
-
-
 
 int get_INODE(int inum, INODE* n) {
 	
@@ -47,8 +41,6 @@ int get_INODE(int inum, INODE* n) {
 	lseek(fd, iblock*BLOCKSIZE, SEEK_SET);
 	read(fd, n, sizeof(INODE));
 
-	//printf("get_INODE: returning INODE--\n");
-	//print_INODE(n);
 	return 0;
 }
 
@@ -56,7 +48,7 @@ int get_INODE(int inum, INODE* n) {
 // pinum is unused if firstBlock == 0
 int build_dir_block(int firstBlock, int inum, int pinum)
 {
-	dirBlock db;
+	dir_entries db;
 	int i;
 	for(i = 0; i < NENTRIES; i++)
 	{
@@ -72,15 +64,15 @@ int build_dir_block(int firstBlock, int inum, int pinum)
 		strcpy(db.names[1], "..\0");
 	}
 	
-	//print_dirBlock(nextBlock);
+	//print_dir_entries(log_end);
 	// write new block
-	lseek(fd, nextBlock*BLOCKSIZE, SEEK_SET);
+	lseek(fd, log_end*BLOCKSIZE, SEEK_SET);
 	write(fd, &db, BLOCKSIZE);
-	nextBlock++;
+	log_end++;
 
-	//print_dirBlock(nextBlock-1);
+	//print_dir_entries(log_end-1);
 
-	return nextBlock-1;
+	return log_end-1;
 }
 
 void update_CR(int dirty_inum)
@@ -91,8 +83,8 @@ void update_CR(int dirty_inum)
 		write(fd, &inodemap[dirty_inum/16][dirty_inum%16], sizeof(int));
 	}
 
-	lseek(fd, NINODES*sizeof(int), SEEK_SET);	// update nextBlock
-	write(fd, &nextBlock, sizeof(int));
+	lseek(fd, NINODES*sizeof(int), SEEK_SET);	// update log_end
+	write(fd, &log_end, sizeof(int));
 }
 
 void init_node(INODE* node) {
@@ -103,7 +95,7 @@ void init_node(INODE* node) {
 	}
 }
 
-void init_dir(dirBlock *block) {
+void init_dir(dir_entries *block) {
 	// Initialiing dir entries to -1 and copying empty strings
 	for(int i = 0; i < NENTRIES; i++) {
 		block->inums[i] = -1;
@@ -122,7 +114,7 @@ void init_dir(dirBlock *block) {
 // 			// Open Failed
 // 			return -1;
 // 		}
-// 		nextBlock = CPRSIZE;
+// 		log_end = CPRSIZE;
 
 // 		for(int i = 0; i < NINODES; i++) {
 // 			// Setting offsets of INODEs to -1
@@ -134,7 +126,7 @@ void init_dir(dirBlock *block) {
 // 		write(fd, inodemap, sizeof(int) * NINODES);
 
 // 		// Writing checkpoint region
-// 		write(fd, &nextBlock, sizeof(int));
+// 		write(fd, &log_end, sizeof(int));
 
 // 		// Initialiing all other entries to -1
 // 		INODE node;
@@ -143,11 +135,11 @@ void init_dir(dirBlock *block) {
 // 		// Filling Root Directory
 // 		node.inum = 0;
 // 		node.type = MFS_DIRECTORY;
-// 		node.data[0] = nextBlock;
+// 		node.data[0] = log_end;
 // 		node.size = BLOCKSIZE;
 // 		node.filled[0] = 1;
 		
-// 		dirBlock rootdir;
+// 		dir_entries rootdir;
 // 		init_dir(&rootdir);
 // 		rootdir.inums[0] = 0;
 // 		strcpy(rootdir.names[0], ".\0");
@@ -155,30 +147,30 @@ void init_dir(dirBlock *block) {
 // 		strcpy(rootdir.names[1], "..\0");
 
 // 		// write rootdir
-// 		lseek(fd, nextBlock * BLOCKSIZE, SEEK_SET);
+// 		lseek(fd, log_end * BLOCKSIZE, SEEK_SET);
 // 		write(fd, &rootdir, sizeof(rootdir));
-// 		nextBlock++;
+// 		log_end++;
 		
 // 		// Writing block number to inodemap
-// 		inodemap[0] = nextBlock;
+// 		inodemap[0] = log_end;
 
 // 		// write INODE
-// 		lseek(fd, nextBlock * BLOCKSIZE, SEEK_SET);
+// 		lseek(fd, log_end * BLOCKSIZE, SEEK_SET);
 // 		write(fd, &node, sizeof(INODE));
-// 		nextBlock++;
+// 		log_end++;
 
 // 		lseek(fd, 0, SEEK_SET);
 // 		write(fd, inodemap[0], sizeof(int));
 
 // 		lseek(fd, 4096 * sizeof(int), SEEK_SET);
-// 		write(fd, &nextBlock, sizeof(int));
+// 		write(fd, &log_end, sizeof(int));
 // 	} else {
 // 		// Existing file image
 // 		newFS = 0;
 // 		lseek(fd, 0, SEEK_SET);
 // 		// Reading inodemap and checkpointe end region
 // 		read(fd, inodemap, sizeof(int) * NINODES);
-// 		read(fd, &nextBlock, sizeof(int));
+// 		read(fd, &log_end, sizeof(int));
 // 	}	
 // 	serverListen(port);
 // 	return 0;
@@ -195,7 +187,7 @@ int Server_Startup(int port, char* path) {
 		fd = open(path, O_RDWR|O_CREAT|O_TRUNC, S_IRWXU);
 		if(fd == -1)
 			return -1;
-		nextBlock = CPRSIZE;
+		log_end = CPRSIZE;
 		
 		//printf("fd = %d\n", fd);
 
@@ -207,12 +199,12 @@ int Server_Startup(int port, char* path) {
 
 		lseek(fd, 0, SEEK_SET);
 		write(fd, inodemap, sizeof(int)*NINODES);
-		write(fd, &nextBlock, sizeof(int));
+		write(fd, &log_end, sizeof(int));
 
 		// create root
 		//
 		//printf("=================================\nRoot before doing anything:\n\n");
-		//print_dirBlock(7);
+		//print_dir_entries(7);
 		//printf("=================================\n\n\n\n\n");
 
 		INODE n;
@@ -220,14 +212,14 @@ int Server_Startup(int port, char* path) {
 		n.size = BLOCKSIZE;
 		n.type = MFS_DIRECTORY;
 		n.filled[0] = 1;
-		n.data[0] = nextBlock;
+		n.data[0] = log_end;
 		for(i = 1; i < NBLOCKS; i++)
 		{
 			n.filled[i] = 0;
 			n.data[i] = -1;
 		}
 
-		dirBlock baseBlock;
+		dir_entries baseBlock;
 		baseBlock.inums[0] = 0;
 		baseBlock.inums[1] = 0;
 		strcpy(baseBlock.names[0], ".\0");
@@ -240,23 +232,23 @@ int Server_Startup(int port, char* path) {
 		}
 
 		// write baseBlock
-		lseek(fd, nextBlock*BLOCKSIZE, SEEK_SET);
-		write(fd, &baseBlock, sizeof(dirBlock));
-		nextBlock++;
+		lseek(fd, log_end*BLOCKSIZE, SEEK_SET);
+		write(fd, &baseBlock, sizeof(dir_entries));
+		log_end++;
 		
 		// update imap
-		update_CPR_inode_num(0,nextBlock);
+		update_CPR_inode_num(0,log_end);
 
 		// write INODE
-		lseek(fd, nextBlock*BLOCKSIZE, SEEK_SET);
+		lseek(fd, log_end*BLOCKSIZE, SEEK_SET);
 		write(fd, &n, sizeof(INODE));
-		nextBlock++;
+		log_end++;
 
 		// write checkpoint region
 		update_CR(0);
 
 		//printf("=======================================\nRoot (block number %d) after creation:\n\n\n\n", imap[0]);
-		//print_dirBlock(imap[0]);
+		//print_dir_entries(imap[0]);
 		//printf("========================================\n\n\n\n");
 	}
 	else
@@ -266,15 +258,9 @@ int Server_Startup(int port, char* path) {
 
 		lseek(fd, 0, SEEK_SET);
 		read(fd, inodemap, sizeof(int)*NINODES);
-		read(fd, &nextBlock, sizeof(int));
-	}
-
-	//	TODO: remove comment here
+		read(fd, &log_end, sizeof(int));
+	}	
 	serverListen(port);
-	//INODE root;
-	//get_INODE(0, &root);
-	//print_INODE(&root);
-	//print_dirBlock(root.blocks[0]);
 	return 0;
 }
 
@@ -294,7 +280,7 @@ int Server_Lookup(int pinum, char *name) {
 		// If a filled block found
 		if (parent_INODE.filled[i]) {
 
-			dirBlock foundblock;
+			dir_entries foundblock;
 			lseek(fd, parent_INODE.data[i] * BLOCKSIZE, SEEK_SET);
 			read(fd, &foundblock, BLOCKSIZE);
 
@@ -355,20 +341,20 @@ int Server_Write(int INODE_num, char *buffer, int block) {
 	node.size = new_node_size;
 	node.filled[block] = 1;
 
-	node.data[block] = nextBlock + 1;
+	node.data[block] = log_end + 1;
 
 	// Persist Inode
-	lseek(fd, nextBlock * BLOCKSIZE, SEEK_SET);
+	lseek(fd, log_end * BLOCKSIZE, SEEK_SET);
 	write(fd, &node, BLOCKSIZE);
 
 	// Updating Inode
-	update_CPR_inode_num(INODE_num, nextBlock);
-	nextBlock++;
+	update_CPR_inode_num(INODE_num, log_end);
+	log_end++;
 	
 	// Write data block
-	lseek(fd, nextBlock * BLOCKSIZE, SEEK_SET);
+	lseek(fd, log_end * BLOCKSIZE, SEEK_SET);
 	write(fd, buffer, BLOCKSIZE);
-	nextBlock++;
+	log_end++;
 
 	update_CR(INODE_num);
 	return 0;
@@ -407,11 +393,11 @@ int Server_Read(int INODE_num, char *buffer, int block){
 	}
 	else																									// read directory
 	{
-		dirBlock db;																				// read dirBlock
+		dir_entries db;																				// read dir_entries
 		lseek(fd, node.data[block], SEEK_SET);
 		read(fd, &db, BLOCKSIZE);
 
-		MFS_DirEnt_t entries[NENTRIES];											// convert dirBlock to MRS_DirEnt_t
+		MFS_DirEnt_t entries[NENTRIES];											// convert dir_entries to MRS_DirEnt_t
 		int i;
 		for(i = 0; i < NENTRIES; i++)
 		{
@@ -461,7 +447,7 @@ int Server_Creat(int pinum, int type, char *name){
 
 	int block_index;
 	int entry; 
-	dirBlock block;
+	dir_entries block;
 	for(block_index = 0; block_index < NBLOCKS; block_index++) {
 		if(parent_node.filled[block_index]) {
 			lseek(fd, parent_node.data[block_index]*BLOCKSIZE, SEEK_SET);
@@ -489,7 +475,7 @@ int Server_Creat(int pinum, int type, char *name){
 						node.type = type;	
 						if(type == MFS_DIRECTORY) {
 							node.filled[0] = 1;
-							node.data[0] = nextBlock;
+							node.data[0] = log_end;
 							
 							build_dir_block(1, INODE_num, pinum);
 							node.size += BLOCKSIZE;
@@ -498,12 +484,12 @@ int Server_Creat(int pinum, int type, char *name){
 						}
 
 						// update imap
-						update_CPR_inode_num(INODE_num, nextBlock);
+						update_CPR_inode_num(INODE_num, log_end);
 
 						// write INODE
-						lseek(fd, nextBlock*BLOCKSIZE, SEEK_SET);
+						lseek(fd, log_end*BLOCKSIZE, SEEK_SET);
 						write(fd, &node, sizeof(INODE));
-						nextBlock++;
+						log_end++;
 
 						// write checkpoint region
 						update_CR(INODE_num);
@@ -547,7 +533,7 @@ int Server_Unlink(int pinum, char *name){
 		int block_index;
 		for(block_index = 0; block_index < NBLOCKS; block_index++) {
 			if(toRemove.filled[block_index]) {
-				dirBlock block;
+				dir_entries block;
 				lseek(fd, toRemove.data[block_index] * BLOCKSIZE, SEEK_SET);
 				read(fd, &block, BLOCKSIZE);
 
@@ -566,7 +552,7 @@ int Server_Unlink(int pinum, char *name){
 	int blockindex = 0;
 	for(; blockindex < NBLOCKS && !unlink_done; blockindex++) {
 		if(parent_INODE.filled[blockindex]) {
-			dirBlock block;
+			dir_entries block;
 			lseek(fd, parent_INODE.data[blockindex]*BLOCKSIZE, SEEK_SET);
 			read(fd, &block, BLOCKSIZE);
 
@@ -582,18 +568,18 @@ int Server_Unlink(int pinum, char *name){
 			}
 
 			if(unlink_done) {
-				lseek(fd, nextBlock * BLOCKSIZE, SEEK_SET);
+				lseek(fd, log_end * BLOCKSIZE, SEEK_SET);
 				write(fd, &block, BLOCKSIZE);
-				nextBlock++;
+				log_end++;
 
 				// inform parent INODE of new block location
-				parent_INODE.data[blockindex] = nextBlock-1;
-				lseek(fd, nextBlock*BLOCKSIZE, SEEK_SET);
+				parent_INODE.data[blockindex] = log_end-1;
+				lseek(fd, log_end*BLOCKSIZE, SEEK_SET);
 				write(fd, &parent_INODE, BLOCKSIZE);
-				nextBlock++;
+				log_end++;
 
 				// update inodemap
-				update_CPR_inode_num(pinum, nextBlock-1);
+				update_CPR_inode_num(pinum, log_end-1);
 				update_CR(pinum);
 			}
 		}
@@ -610,55 +596,6 @@ int Server_Shutdown()
 	fsync(fd);			// not sure if this is necessary
 	exit(0);
 	return -1;	// if we reach this line of code, there was an error
-}
-
-// TODO: remove test code
-void print_stat(MFS_Stat_t *m)
-{
-	printf("The size is %d and the type is %d.\n", m->size, m->type);
-}
-
-void print_dirBlock(int block)
-{
-	dirBlock db;
-	lseek(fd, block*BLOCKSIZE, SEEK_SET);
-	printf("Reading from address %d\n", block*BLOCKSIZE);
-	read(fd, &db, sizeof(dirBlock));
-	
-	int i;
-	for(i = 0; i < NENTRIES; i++)
-	{
-		printf("%d: File %s has INODE number %d.\n", i, db.names[i], db.inums[i]);
-	}
-
-}
-
-void print_CR()
-{
-	lseek(fd, 0, SEEK_SET);
-	read(fd, &inodemap, NINODES*sizeof(int));
-	read(fd, &nextBlock, sizeof(int));
-
-	int i;
-	for(i = 0; i < NINODES; i++)
-	{
-		printf("inum:%d block:%d    \t", i, inodemap[i/16][i%16]);
-		if(i%5 == 0)
-			printf("\n");
-	}
-
-	printf("\nNext free block is %d.\n", nextBlock);
-}
-
-void print_INODE(INODE *n)
-{
-	printf("INODE number: %d, type: %d, size: %d\n", n->inum, n->type, n->size);
-
-	int i;
-	for(i = 0; i < NBLOCKS; i++)
-	{
-		printf("%d: block %d, filled = %d\n", i, n->data[i], n->filled[i]);
-	}
 }
 
 void serverListen(int port)
