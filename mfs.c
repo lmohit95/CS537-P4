@@ -12,22 +12,16 @@
 
 char* serverHostname;
 int serverPort;
-int initialized = 0;
 
-int sendPacket(char *hostname, int port, Net_Packet *sentPacket, Net_Packet *responsePacket, int maxTries)
-{
+int sendPacket(char *hostname, int port, Net_Packet *sentPacket, Net_Packet *responsePacket, int maxTries) {
     int sd = UDP_Open(0);
-    if(sd < -1)
-    {
-        perror("Error opening connection.\n");
+    if(sd < -1) {
         return -1;
     }
 
     struct sockaddr_in addr, addr2;
     int rc = UDP_FillSockAddr(&addr, hostname, port);
-    if(rc < 0)
-    {
-        perror("Error looking up host.\n");
+    if(rc < 0) {
         return -1;
     }
 
@@ -35,7 +29,6 @@ int sendPacket(char *hostname, int port, Net_Packet *sentPacket, Net_Packet *res
     struct timeval tv;
     tv.tv_sec=3;
     tv.tv_usec=0;
-
 
     do {
         FD_ZERO(&rfds);
@@ -61,14 +54,10 @@ int MFS_Init(char *hostname, int port) {
 	serverHostname = malloc(strlen(hostname) + 1);
 	strcpy(serverHostname, hostname);
 	serverPort = port;
-	initialized = 1;
 	return 0;
 }
 
 int MFS_Lookup(int pinum, char *name){
-	if(!initialized)
-		return -1;
-	
 	if(checkName(name) < 0)
 		return -1;
 
@@ -87,9 +76,6 @@ int MFS_Lookup(int pinum, char *name){
 }
 
 int MFS_Stat(int inum, MFS_Stat_t *m) {
-	if(!initialized)
-		return -1;
-
 	Net_Packet sentPacket;
 	Net_Packet responsePacket;
 
@@ -104,9 +90,6 @@ int MFS_Stat(int inum, MFS_Stat_t *m) {
 }
 
 int MFS_Write(int inum, char *buffer, int block){
-	if(!initialized)
-		return -1;
-	
 	Net_Packet sentPacket;
 	Net_Packet responsePacket;
 
@@ -123,9 +106,7 @@ int MFS_Write(int inum, char *buffer, int block){
 }
 
 int MFS_Read(int inum, char *buffer, int block){
-	if(!initialized)
-		return -1;
-	
+
 	Net_Packet sentPacket;
 	Net_Packet responsePacket;
 
@@ -143,9 +124,7 @@ int MFS_Read(int inum, char *buffer, int block){
 }
 
 int MFS_Creat(int pinum, int type, char *name){
-	if(!initialized)
-		return -1;
-	
+
 	if(checkName(name) < 0)
 		return -1;
 
@@ -165,9 +144,7 @@ int MFS_Creat(int pinum, int type, char *name){
 }
 
 int MFS_Unlink(int pinum, char *name){
-	if(!initialized)
-		return -1;
-	
+
 	if(checkName(name) < 0)
 		return -1;
 	
