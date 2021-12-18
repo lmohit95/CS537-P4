@@ -14,20 +14,8 @@ typedef struct __MFS_DirEnt_t {
 } MFS_DirEnt_t;
 #endif
 
-
-enum message {
-	PAK_LOOKUP,
-	PAK_STAT,
-	PAK_WRITE,
-	PAK_READ,
-	PAK_CREAT,
-	PAK_UNLINK,
-	PAK_RESPONSE,
-	PAK_SHUTDOWN
-};
-
 typedef struct __Net_Packet {
-	enum message message;
+	int op;
 	int inum;
 	int block;
 	int type;

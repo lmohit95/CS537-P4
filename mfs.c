@@ -13,46 +13,6 @@ char* serverHostname;
 int serverPort;
 int initialized = 0;
 
-// int sendPacket(char *hostname, int port, Net_Packet *sentPacket, Net_Packet *responsePacket, int maxTries) {
-//     int sd = UDP_Open(0);
-//     if(sd < -1)
-//     {
-//         perror("Error opening connection.\n");
-//         return -1;
-//     }
-
-//     struct sockaddr_in addr, addr2;
-//     int rc = UDP_FillSockAddr(&addr, hostname, port);
-//     if(rc < 0)
-//     {
-//         perror("Error looking up host.\n");
-//         return -1;
-//     }
-
-//     fd_set rfds;
-//     struct timeval tv;
-//     tv.tv_sec=3;
-//     tv.tv_usec=0;
-
-
-//     do {
-//         FD_ZERO(&rfds);
-//         FD_SET(sd,&rfds);
-//         UDP_Write(sd, &addr, (char*)sentPacket, sizeof(Net_Packet));
-//         if(select(sd+1, &rfds, NULL, NULL, &tv))
-//         {
-//             rc = UDP_Read(sd, &addr2, (char*)responsePacket, sizeof(Net_Packet));
-//             if(rc > 0)
-//             {
-//                 UDP_Close(sd);
-//                 return 0;
-//             }
-//         }else {
-//             maxTries -= 1;
-//         }
-//     }while(1);
-// }
-
 int MFS_Init(char *hostname, int port) {
 	if(port < 0 || strlen(hostname) < 1)
 		return -1;
@@ -74,7 +34,7 @@ int MFS_Lookup(int pinum, char *name){
 	Net_Packet responsePacket;
 
 	sentPacket.inum = pinum;
-	sentPacket.message = PAK_LOOKUP;
+	sentPacket.op = 0;
 	strcpy((char*)&(sentPacket.name), name);
 	int rc = sendPacket(serverHostname, serverPort, &sentPacket, &responsePacket, 3);
 	if(rc < 0)
@@ -92,7 +52,7 @@ int MFS_Stat(int inum, MFS_Stat_t *m) {
 	Net_Packet responsePacket;
 
 	sentPacket.inum = inum;
-	sentPacket.message = PAK_STAT;
+	sentPacket.op = 1;
 
 	if(sendPacket(serverHostname, serverPort, &sentPacket, &responsePacket, 3) < 0)
 		return -1;
@@ -112,7 +72,7 @@ int MFS_Write(int inum, char *buffer, int block){
 	//strncpy(sentPacket.buffer, buffer, BUFFER_SIZE);
 	memcpy(sentPacket.buffer, buffer, BUFFER_SIZE);
 	sentPacket.block = block;
-	sentPacket.message = PAK_WRITE;
+	sentPacket.op = 2;
 	
 	if(sendPacket(serverHostname, serverPort, &sentPacket, &responsePacket, 3) < 0)
 		return -1;
@@ -129,7 +89,7 @@ int MFS_Read(int inum, char *buffer, int block){
 
 	sentPacket.inum = inum;
 	sentPacket.block = block;
-	sentPacket.message = PAK_READ;
+	sentPacket.op = 3;
 	
 	if(sendPacket(serverHostname, serverPort, &sentPacket, &responsePacket, 3) < 0)
 		return -1;
@@ -152,7 +112,7 @@ int MFS_Creat(int pinum, int type, char *name){
 
 	sentPacket.inum = pinum;
 	sentPacket.type = type;
-	sentPacket.message = PAK_CREAT;
+	sentPacket.op = 4;
 
 	strcpy(sentPacket.name, name);
 	
@@ -173,7 +133,7 @@ int MFS_Unlink(int pinum, char *name){
 	Net_Packet responsePacket;
 
 	sentPacket.inum = pinum;
-	sentPacket.message = PAK_UNLINK;
+	sentPacket.op = 5;
 	strcpy(sentPacket.name, name);
 	
 	if(sendPacket(serverHostname, serverPort, &sentPacket, &responsePacket, 3) < 0)
@@ -184,7 +144,7 @@ int MFS_Unlink(int pinum, char *name){
 
 int MFS_Shutdown(){
 	Net_Packet sentPacket, responsePacket;
-	sentPacket.message = PAK_SHUTDOWN;
+	sentPacket.op = 7;
 
 
 	if(sendPacket(serverHostname, serverPort, &sentPacket, &responsePacket, 3) < 0)
