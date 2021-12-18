@@ -1,41 +1,27 @@
 #ifndef __LFS_H__
 #define __LFS_H__
-#define NBLOCKS 	14				// max number of blocks per inode
-#define NINODES 	4096			// max number of inodes in system
+#define NBLOCKS 	14				// max number of blocks per INODE
+#define NINODES 	4096			// max number of INODEs in system
 #define CPRSIZE		6					// size (in blocks) of checkpoint region TODO
 #define BLOCKSIZE	4096			// size (in bytes) of one block
 #define DIRENTRYSIZE	32		// size (in bytes) of a directory entry
 #define NENTRIES	(BLOCKSIZE/DIRENTRYSIZE)	// number of entries per block in a directory
 #define NAMELENGTH	28			// length (in bytes) of a directory entry name
 
-typedef struct __inode {
+typedef struct __INODE {
 	int inum;
 	int size;								// number of bytes in the file. a multiple of BLOCKSIZE
 	int type;
 	int filled[NBLOCKS];			// used[i] is true if blocks[i] is used
 	int data[NBLOCKS];		// address in memory of each block
-} inode;
+} INODE;
 
 typedef struct __dirBlock {
 	char names[NENTRIES][NAMELENGTH];
 	int  inums[NENTRIES];
 } dirBlock;
 
-#ifndef __MFS_h__
-#ifndef __PACKETS_H__
-typedef struct __MFS_Stat_t {
-    int type;   // MFS_DIRECTORY or MFS_REGULAR
-    int size;   // bytes
-    // note: no permissions, access times, etc.
-} MFS_Stat_t;
-typedef struct __MFS_DirEnt_t {
-    char name[28];  // up to 28 bytes of name in directory (including \0)
-    int  inum;      // inode number of entry (-1 means entry not used)
-} MFS_DirEnt_t;
-#endif
-#endif
-
-int get_inode(int inum, inode* n);
+int get_INODE(int inum, INODE* n);
 int build_dir_block(int firstBlock, int inum, int pinum);
 void update_CR(int dirty_inum);
 int Server_Startup();
