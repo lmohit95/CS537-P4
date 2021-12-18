@@ -37,17 +37,14 @@ int get_INODE(int inum, INODE* n) {
 	return 0;
 }
 
-int build_dir_block(int firstBlock, int inum, int pinum) {
+int getBlock(int firstBlock, int inum, int pinum) {
 	dir_entries db;
-	int i;
-	for(i = 0; i < NENTRIES; i++)
-	{
+	for(int i = 0; i < NENTRIES; i++) {
 		db.inums[i] = -1;
-		strcpy(db.names[i], "DNE\0");
+		strcpy(db.names[i], "\0");
 	}
 
-	if(firstBlock)
-	{
+	if(firstBlock) {
 		db.inums[0] = inum;
 		strcpy(db.names[0], ".\0");
 		db.inums[1] = pinum;
@@ -60,14 +57,13 @@ int build_dir_block(int firstBlock, int inum, int pinum) {
 	return log_end-1;
 }
 
-void update_CR(int dirty_inum) {
-	if(dirty_inum != -1)
-	{
-		lseek(fd, dirty_inum*sizeof(int), SEEK_SET);
-		write(fd, &inodemap[dirty_inum/16][dirty_inum%16], sizeof(int));
+void update_CR(int inode_number) {
+	if(inode_number != -1) {
+		lseek(fd, inode_number * sizeof(int), SEEK_SET);
+		write(fd, &inodemap[inode_number/16][inode_number%16], sizeof(int));
 	}
 
-	lseek(fd, NINODES*sizeof(int), SEEK_SET);
+	lseek(fd, NINODES * sizeof(int), SEEK_SET);
 	write(fd, &log_end, sizeof(int));
 }
 
@@ -81,7 +77,7 @@ void init_node(INODE* node) {
 void init_dir(dir_entries *block) {
 	for(int i = 0; i < NENTRIES; i++) {
 		block->inums[i] = -1;
-		strcpy(block->names[i], "DNE\0");
+		strcpy(block->names[i], "\0");
 	}
 }
 
@@ -94,8 +90,7 @@ int Server_Startup(int port, char* path) {
 		log_end = CPRSIZE;
 
 		int i;
-		for(i = 0; i < NINODES; i++)
-		{
+		for(i = 0; i < NINODES; i++) {
 			update_CPR_inode_num(i,-1);
 		}
 
@@ -103,16 +98,15 @@ int Server_Startup(int port, char* path) {
 		write(fd, inodemap, sizeof(int)*NINODES);
 		write(fd, &log_end, sizeof(int));
 
-		INODE n;
-		n.inum = 0;
-		n.size = BLOCKSIZE;
-		n.type = MFS_DIRECTORY;
-		n.filled[0] = 1;
-		n.data[0] = log_end;
-		for(i = 1; i < NBLOCKS; i++)
-		{
-			n.filled[i] = 0;
-			n.data[i] = -1;
+		INODE node;
+		node.inum = 0;
+		node.type = MFS_DIRECTORY;
+		node.size = BLOCKSIZE;
+		node.data[0] = log_end;
+		node.filled[0] = 1;
+		for(i = 1; i < NBLOCKS; i++) {
+			node.filled[i] = 0;
+			node.data[i] = -1;
 		}
 
 		dir_entries baseBlock;
@@ -121,20 +115,19 @@ int Server_Startup(int port, char* path) {
 		strcpy(baseBlock.names[0], ".\0");
 		strcpy(baseBlock.names[1], "..\0");
 
-		for(i = 2; i < NENTRIES; i++)
-		{
+		for(i = 2; i < NENTRIES; i++) {
 			baseBlock.inums[i] = -1;
-			strcpy(baseBlock.names[i], "DNE\0");
+			strcpy(baseBlock.names[i], "\0");
 		}
 
-		lseek(fd, log_end*BLOCKSIZE, SEEK_SET);
+		lseek(fd, log_end * BLOCKSIZE, SEEK_SET);
 		write(fd, &baseBlock, sizeof(dir_entries));
 		log_end++;
 		
 		update_CPR_inode_num(0,log_end);
 
 		lseek(fd, log_end*BLOCKSIZE, SEEK_SET);
-		write(fd, &n, sizeof(INODE));
+		write(fd, &node, sizeof(INODE));
 		log_end++;
 
 		update_CR(0);
@@ -331,7 +324,7 @@ int Server_Creat(int pinum, int type, char *name){
 							node.filled[0] = 1;
 							node.data[0] = log_end;
 							
-							build_dir_block(1, INODE_num, pinum);
+							getBlock(1, INODE_num, pinum);
 							node.size += BLOCKSIZE;
 						} else if (type != MFS_DIRECTORY && type != MFS_REGULAR_FILE) {
 							return -1;
@@ -345,7 +338,7 @@ int Server_Creat(int pinum, int type, char *name){
 				}
 			}
 		} else {
-			int dir_block = build_dir_block(0, INODE_num, -1);
+			int dir_block = getBlock(0, INODE_num, -1);
 			parent_node.size += BLOCKSIZE;
 			parent_node.filled[block_index] = 1;
 			parent_node.data[block_index] = dir_block;
@@ -408,7 +401,7 @@ int Server_Unlink(int pinum, char *name){
 				if(block.inums[entry_index] != -1) {
 					if(strcmp(block.names[entry_index], name) == 0) {
 						block.inums[entry_index] = -1;
-						strcpy(block.names[entry_index], "DNE\0");
+						strcpy(block.names[entry_index], "\0");
 						unlink_done = 1;
 					}
 				}
