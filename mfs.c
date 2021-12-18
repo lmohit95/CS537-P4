@@ -12,7 +12,7 @@
 
 char* host_name;
 int port_number;
-
+int illegalname(char* name);
 int sendPayload(Payload *sentPayload, Payload *responsePayload, int maxTries) {
     int sd = UDP_Open(0);
     if(sd < -1) {
@@ -56,7 +56,7 @@ int MFS_Init(char *hostname, int port) {
 }
 
 int MFS_Lookup(int pinum, char *name){
-	if(checkName(name) < 0)
+	if(illegalname(name) < 0)
 		return -1;
 
 	Payload sentPayload;
@@ -122,7 +122,7 @@ int MFS_Read(int inum, char *buffer, int block){
 
 int MFS_Creat(int pinum, int type, char *name){
 
-	if(checkName(name) < 0)
+	if(illegalname(name) < 0)
 		return -1;
 
 	Payload sentPayload;
@@ -141,7 +141,7 @@ int MFS_Creat(int pinum, int type, char *name){
 }
 
 int MFS_Unlink(int pinum, char *name){
-	if(checkName(name) < 0)
+	if(illegalname(name) < 0)
 		return -1;
 	
 	Payload sentPayload;
@@ -166,7 +166,7 @@ int MFS_Shutdown(){
 	return 0;
 }
 
-int checkName(char* name) {
+int illegalname(char* name) {
 	if(strlen(name) > 27)
 		return -1;
 	return 0;
