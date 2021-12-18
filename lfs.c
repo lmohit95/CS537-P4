@@ -20,9 +20,18 @@ typedef struct __buf {
 } buf;
 int newFS;
 
-int inodemap[NINODES];			// block number of each inode
+int inodemap[NINODES/16][16];			// block number of each inode
 int nextBlock;					// next block in the address space to be written
 int fd;										// the file descriptor of the LFS
+
+void update_CPR_inode_num(int inode_num, int block){
+	inodemap[inode_num/16][inode_num%16]=block;
+}
+int get_CPR_inode_num(int inode_num){
+	return inodemap[inode_num/16][inode_num%16];
+}
+
+
 
 int get_inode(int inum, inode* n) {
 	
@@ -32,7 +41,7 @@ int get_inode(int inum, inode* n) {
 		return -1;
 	}
 	
-	int iblock = inodemap[inum];					// block where desired inode is written
+	int iblock = get_CPR_inode_num(inum);					// block where desired inode is written
 	
 	lseek(fd, iblock*BLOCKSIZE, SEEK_SET);
 	read(fd, n, sizeof(inode));
@@ -78,7 +87,7 @@ void update_CR(int dirty_inum)
 	if(dirty_inum != -1)
 	{
 		lseek(fd, dirty_inum*sizeof(int), SEEK_SET);		// update inode table
-		write(fd, &inodemap[dirty_inum], sizeof(int));
+		write(fd, &inodemap[dirty_inum/16][dirty_inum%16], sizeof(int));
 	}
 
 	lseek(fd, NINODES*sizeof(int), SEEK_SET);	// update nextBlock
@@ -192,7 +201,7 @@ int Server_Startup(int port, char* path) {
 		int i;
 		for(i = 0; i < NINODES; i++)
 		{
-			inodemap[i] = -1;
+			update_CPR_inode_num(i,-1);
 		}
 
 		lseek(fd, 0, SEEK_SET);
@@ -235,7 +244,7 @@ int Server_Startup(int port, char* path) {
 		nextBlock++;
 		
 		// update imap
-		inodemap[0] = nextBlock;
+		update_CPR_inode_num(0,nextBlock);
 
 		// write inode
 		lseek(fd, nextBlock*BLOCKSIZE, SEEK_SET);
@@ -352,7 +361,7 @@ int Server_Write(int inode_num, char *buffer, int block) {
 	write(fd, &node, BLOCKSIZE);
 
 	// Updating Inode
-	inodemap[inode_num] = nextBlock;
+	update_CPR_inode_num(inode_num, nextBlock);
 	nextBlock++;
 	
 	// Write data block
@@ -437,7 +446,7 @@ int Server_Creat(int pinum, int type, char *name){
 	
 	int inode_num = -1;
 	for(int i = 0; i < NINODES; i++) {
-		if(inodemap[i] == -1) {
+		if(get_CPR_inode_num(i) == -1) {
 			inode_num = i;
 			printf("Next available Inode num = %d\n", inode_num);
 			break;
@@ -460,7 +469,7 @@ int Server_Creat(int pinum, int type, char *name){
 			for(entry = 0; entry < NENTRIES; entry++) {
 				if(block.inums[entry] == -1) {
 						// write parent
-						lseek(fd, inodemap[pinum]*BLOCKSIZE, SEEK_SET);
+						lseek(fd, inodemap[pinum/16][pinum%16]*BLOCKSIZE, SEEK_SET);
 						write(fd, &parent_node, BLOCKSIZE);
 
 						block.inums[entry] = inode_num;
@@ -488,7 +497,7 @@ int Server_Creat(int pinum, int type, char *name){
 						}
 
 						// update imap
-						inodemap[inode_num] = nextBlock;
+						update_CPR_inode_num(inode_num, nextBlock);
 
 						// write inode
 						lseek(fd, nextBlock*BLOCKSIZE, SEEK_SET);
@@ -583,14 +592,14 @@ int Server_Unlink(int pinum, char *name){
 				nextBlock++;
 
 				// update inodemap
-				inodemap[pinum] = nextBlock-1;
+				update_CPR_inode_num(pinum, nextBlock-1);
 				update_CR(pinum);
 			}
 		}
 	}
 
 	printf("Removing inode from inode map");
-	inodemap[inode_num] = -1;
+	update_CPR_inode_num(inode_num, -1);
 	update_CR(inode_num);
 	return 0;
 }
@@ -632,7 +641,7 @@ void print_CR()
 	int i;
 	for(i = 0; i < NINODES; i++)
 	{
-		printf("inum:%d block:%d    \t", i, inodemap[i]);
+		printf("inum:%d block:%d    \t", i, inodemap[i/16][i%16]);
 		if(i%5 == 0)
 			printf("\n");
 	}
