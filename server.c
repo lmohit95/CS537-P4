@@ -21,15 +21,15 @@ typedef struct __buf {
 } buf;
 int newFS;
 
-int INODEmap[NINODES/16][16];			// block number of each INODE
+int inodemap[NINODES/16][16];			// block number of each INODE
 int nextBlock;					// next block in the address space to be written
 int fd;										// the file descriptor of the LFS
 
-void update_CPR_INODE_num(int INODE_num, int block){
-	INODEmap[INODE_num/16][INODE_num%16]=block;
+void update_CPR_inode_num(int INODE_num, int block){
+	inodemap[INODE_num/16][INODE_num%16]=block;
 }
-int get_CPR_INODE_num(int INODE_num){
-	return INODEmap[INODE_num/16][INODE_num%16];
+int get_CPR_inode_num(int INODE_num){
+	return inodemap[INODE_num/16][INODE_num%16];
 }
 
 
@@ -42,7 +42,7 @@ int get_INODE(int inum, INODE* n) {
 		return -1;
 	}
 	
-	int iblock = get_CPR_INODE_num(inum);					// block where desired INODE is written
+	int iblock = get_CPR_inode_num(inum);					// block where desired INODE is written
 	
 	lseek(fd, iblock*BLOCKSIZE, SEEK_SET);
 	read(fd, n, sizeof(INODE));
@@ -88,7 +88,7 @@ void update_CR(int dirty_inum)
 	if(dirty_inum != -1)
 	{
 		lseek(fd, dirty_inum*sizeof(int), SEEK_SET);		// update INODE table
-		write(fd, &INODEmap[dirty_inum/16][dirty_inum%16], sizeof(int));
+		write(fd, &inodemap[dirty_inum/16][dirty_inum%16], sizeof(int));
 	}
 
 	lseek(fd, NINODES*sizeof(int), SEEK_SET);	// update nextBlock
@@ -126,12 +126,12 @@ void init_dir(dirBlock *block) {
 
 // 		for(int i = 0; i < NINODES; i++) {
 // 			// Setting offsets of INODEs to -1
-// 			INODEmap[i] = -1;
+// 			inodemap[i] = -1;
 // 		}
 
-// 		// Writing INODEmap
+// 		// Writing inodemap
 // 		lseek(fd, 0, SEEK_SET);
-// 		write(fd, INODEmap, sizeof(int) * NINODES);
+// 		write(fd, inodemap, sizeof(int) * NINODES);
 
 // 		// Writing checkpoint region
 // 		write(fd, &nextBlock, sizeof(int));
@@ -159,8 +159,8 @@ void init_dir(dirBlock *block) {
 // 		write(fd, &rootdir, sizeof(rootdir));
 // 		nextBlock++;
 		
-// 		// Writing block number to INODEmap
-// 		INODEmap[0] = nextBlock;
+// 		// Writing block number to inodemap
+// 		inodemap[0] = nextBlock;
 
 // 		// write INODE
 // 		lseek(fd, nextBlock * BLOCKSIZE, SEEK_SET);
@@ -168,7 +168,7 @@ void init_dir(dirBlock *block) {
 // 		nextBlock++;
 
 // 		lseek(fd, 0, SEEK_SET);
-// 		write(fd, INODEmap[0], sizeof(int));
+// 		write(fd, inodemap[0], sizeof(int));
 
 // 		lseek(fd, 4096 * sizeof(int), SEEK_SET);
 // 		write(fd, &nextBlock, sizeof(int));
@@ -176,8 +176,8 @@ void init_dir(dirBlock *block) {
 // 		// Existing file image
 // 		newFS = 0;
 // 		lseek(fd, 0, SEEK_SET);
-// 		// Reading INODEmap and checkpointe end region
-// 		read(fd, INODEmap, sizeof(int) * NINODES);
+// 		// Reading inodemap and checkpointe end region
+// 		read(fd, inodemap, sizeof(int) * NINODES);
 // 		read(fd, &nextBlock, sizeof(int));
 // 	}	
 // 	serverListen(port);
@@ -202,11 +202,11 @@ int Server_Startup(int port, char* path) {
 		int i;
 		for(i = 0; i < NINODES; i++)
 		{
-			update_CPR_INODE_num(i,-1);
+			update_CPR_inode_num(i,-1);
 		}
 
 		lseek(fd, 0, SEEK_SET);
-		write(fd, INODEmap, sizeof(int)*NINODES);
+		write(fd, inodemap, sizeof(int)*NINODES);
 		write(fd, &nextBlock, sizeof(int));
 
 		// create root
@@ -245,7 +245,7 @@ int Server_Startup(int port, char* path) {
 		nextBlock++;
 		
 		// update imap
-		update_CPR_INODE_num(0,nextBlock);
+		update_CPR_inode_num(0,nextBlock);
 
 		// write INODE
 		lseek(fd, nextBlock*BLOCKSIZE, SEEK_SET);
@@ -265,7 +265,7 @@ int Server_Startup(int port, char* path) {
 		//printf("USING OLD FILE SYSTEM\n\n");
 
 		lseek(fd, 0, SEEK_SET);
-		read(fd, INODEmap, sizeof(int)*NINODES);
+		read(fd, inodemap, sizeof(int)*NINODES);
 		read(fd, &nextBlock, sizeof(int));
 	}
 
@@ -362,7 +362,7 @@ int Server_Write(int INODE_num, char *buffer, int block) {
 	write(fd, &node, BLOCKSIZE);
 
 	// Updating Inode
-	update_CPR_INODE_num(INODE_num, nextBlock);
+	update_CPR_inode_num(INODE_num, nextBlock);
 	nextBlock++;
 	
 	// Write data block
@@ -447,7 +447,7 @@ int Server_Creat(int pinum, int type, char *name){
 	
 	int INODE_num = -1;
 	for(int i = 0; i < NINODES; i++) {
-		if(get_CPR_INODE_num(i) == -1) {
+		if(get_CPR_inode_num(i) == -1) {
 			INODE_num = i;
 			printf("Next available Inode num = %d\n", INODE_num);
 			break;
@@ -470,7 +470,7 @@ int Server_Creat(int pinum, int type, char *name){
 			for(entry = 0; entry < NENTRIES; entry++) {
 				if(block.inums[entry] == -1) {
 						// write parent
-						lseek(fd, INODEmap[pinum/16][pinum%16]*BLOCKSIZE, SEEK_SET);
+						lseek(fd, inodemap[pinum/16][pinum%16]*BLOCKSIZE, SEEK_SET);
 						write(fd, &parent_node, BLOCKSIZE);
 
 						block.inums[entry] = INODE_num;
@@ -498,7 +498,7 @@ int Server_Creat(int pinum, int type, char *name){
 						}
 
 						// update imap
-						update_CPR_INODE_num(INODE_num, nextBlock);
+						update_CPR_inode_num(INODE_num, nextBlock);
 
 						// write INODE
 						lseek(fd, nextBlock*BLOCKSIZE, SEEK_SET);
@@ -592,15 +592,15 @@ int Server_Unlink(int pinum, char *name){
 				write(fd, &parent_INODE, BLOCKSIZE);
 				nextBlock++;
 
-				// update INODEmap
-				update_CPR_INODE_num(pinum, nextBlock-1);
+				// update inodemap
+				update_CPR_inode_num(pinum, nextBlock-1);
 				update_CR(pinum);
 			}
 		}
 	}
 
 	printf("Removing INODE from INODE map");
-	update_CPR_INODE_num(INODE_num, -1);
+	update_CPR_inode_num(INODE_num, -1);
 	update_CR(INODE_num);
 	return 0;
 }
@@ -636,13 +636,13 @@ void print_dirBlock(int block)
 void print_CR()
 {
 	lseek(fd, 0, SEEK_SET);
-	read(fd, &INODEmap, NINODES*sizeof(int));
+	read(fd, &inodemap, NINODES*sizeof(int));
 	read(fd, &nextBlock, sizeof(int));
 
 	int i;
 	for(i = 0; i < NINODES; i++)
 	{
-		printf("inum:%d block:%d    \t", i, INODEmap[i/16][i%16]);
+		printf("inum:%d block:%d    \t", i, inodemap[i/16][i%16]);
 		if(i%5 == 0)
 			printf("\n");
 	}
