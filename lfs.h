@@ -5,6 +5,20 @@
 #define DIRENTRYSIZE	32
 #define NENTRIES	(BLOCKSIZE/DIRENTRYSIZE)
 #define NAMELENGTH	28
+#define BUFFER_SIZE (4096)
+#define MAX_NAME_SIZE (28)
+
+
+typedef struct __Payload {
+	int op;
+	int inum;
+	int block;
+	int type;
+
+	char name[MAX_NAME_SIZE];
+	char buffer[BUFFER_SIZE];
+	MFS_Stat_t stat;
+} Payload;
 
 typedef struct __dir_entries {
 	char names[NENTRIES][NAMELENGTH];

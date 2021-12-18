@@ -1,5 +1,4 @@
 #include "mfs.h"
-#include "packets.h"
 #include "stdlib.h"
 #include <string.h>
 #include <sys/select.h>
@@ -9,6 +8,7 @@
 #include "udp.h"
 #include <sys/time.h>
 #include <unistd.h>
+#include "lfs.h"
 
 char* serverHostname;
 int serverPort;

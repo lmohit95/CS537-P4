@@ -10,7 +10,6 @@
 #include <assert.h>
 #include <errno.h>
 #include "udp.h"
-#include "packets.h"
 
 typedef struct __buf {
 	char string [BLOCKSIZE/sizeof(char)];
