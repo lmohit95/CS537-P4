@@ -11,13 +11,13 @@
 #include <errno.h>
 #include "udp.h"
 
+int inodemap[NINODES/16][16];
+int log_end;
+int fd;
+
 typedef struct __buf {
 	char string [BLOCKSIZE/sizeof(char)];
 } buf;
-
-int inodemap[NINODES/16][16];			// block number of each INODE
-int log_end;					// next block in the address space to be written
-int fd;										// the file descriptor of the LFS
 
 void update_CPR_inode_num(int INODE_num, int block){
 	inodemap[INODE_num/16][INODE_num%16]=block;
@@ -27,18 +27,13 @@ int get_CPR_inode_num(int INODE_num){
 }
 
 int get_INODE(int inum, INODE* n) {
-	
-	if(inum < 0 || inum >= NINODES)		// check for invalid inum
-	{
+	if(inum < 0 || inum >= NINODES) {
 		printf("get_INODE: invalid inum\n");
 		return -1;
 	}
-	
-	int iblock = get_CPR_inode_num(inum);					// block where desired INODE is written
-	
+	int iblock = get_CPR_inode_num(inum);
 	lseek(fd, iblock*BLOCKSIZE, SEEK_SET);
 	read(fd, n, sizeof(INODE));
-
 	return 0;
 }
 
@@ -65,8 +60,7 @@ int build_dir_block(int firstBlock, int inum, int pinum) {
 	return log_end-1;
 }
 
-void update_CR(int dirty_inum)
-{
+void update_CR(int dirty_inum) {
 	if(dirty_inum != -1)
 	{
 		lseek(fd, dirty_inum*sizeof(int), SEEK_SET);
@@ -91,11 +85,9 @@ void init_dir(dir_entries *block) {
 	}
 }
 
-void serverListen(int port);
 int Server_Startup(int port, char* path) {
 	
-	if((fd = open(path, O_RDWR)) == -1)
-	{
+	if((fd = open(path, O_RDWR)) == -1) {
 		fd = open(path, O_RDWR|O_CREAT|O_TRUNC, S_IRWXU);
 		if(fd == -1)
 			return -1;
@@ -153,7 +145,6 @@ int Server_Startup(int port, char* path) {
 		read(fd, inodemap, sizeof(int)*NINODES);
 		read(fd, &log_end, sizeof(int));
 	}	
-	serverListen(port);
 	return 0;
 }
 
@@ -167,8 +158,7 @@ int Server_Lookup(int pinum, char *name) {
 	printf("Parent Inode\n");
 	printf("Parent Inde Type = %d , Size = %d\n", parent_INODE.type, parent_INODE.size);
 
-	int i;
-	for (i = 0; i < NBLOCKS; i++) {
+	for (int i = 0; i < NBLOCKS; i++) {
 		if (parent_INODE.filled[i]) {
 
 			dir_entries foundblock;
@@ -450,11 +440,15 @@ int Server_Shutdown() {
 	exit(0);
 }
 
-void serverListen(int port) {
-	int sd = UDP_Open(port);
-	if(sd < 0)
-	{
-		printf("Error opening socket on port %d\n", port);
+int main(int argc, char *argv[]) {
+	int portNumber = atoi(argv[1]);
+	char *fileSysPath = argv[2];
+
+	Server_Startup(portNumber, fileSysPath);
+	
+	int sd = UDP_Open(portNumber);
+	if(sd < 0) {
+		printf("Error opening socket on port %d\n", portNumber);
 		exit(1);
 	}
 
@@ -486,13 +480,5 @@ void serverListen(int port) {
 		    	Server_Shutdown();
 		}
 	}
-}
-
-int main(int argc, char *argv[]) {
-	int portNumber = atoi(argv[1]);
-	char *fileSysPath = argv[2];
-
-	Server_Startup(portNumber, fileSysPath);
-
 	return 0;
 }
