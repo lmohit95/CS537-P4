@@ -7,7 +7,7 @@ client: libmfs.so
 	gcc -ggdb -L. -lmfs -o client client.c
 
 server:
-	gcc -o server server.c sNetworkLib.c lfs.c udp.c
+	gcc -o server server.c udp.c
 
 clean:
 	rm -rf libmfs.so client server
