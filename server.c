@@ -219,6 +219,35 @@ int Server_Write(int INODE_num, char *buffer, int block) {
 	return 0;
 }
 
+// int server_read(int fd, struct checkpoint* CPR, struct payload* data, struct payload * reply) {
+// 	struct INODE inode;
+// 	int status = get_inode(fd, CPR, data->inum, &inode);
+// 		// 	   	lseek(fd, 15692, SEEK_SET);
+// 		// struct INODE temp;
+// 		// read(fd, &temp, sizeof(INODE_size));
+// 		// printf("Test:: inodemap offset = %d\n", temp.data[0]);
+// 	if (status == -1) {
+// 		printf("server_read: invalid block");
+// 		reply->status = -1;
+// 		return -1;
+// 	} else {
+// 		int block_offset = inode.data[data->block];
+// 		printf("server_read:: inode type = %d, inode size = %d\n", inode.type, inode.size);
+// 		printf("block offset=%d\n",block_offset);
+// 		if (block_offset == -1) {
+// 			printf("server_read: invalid block");
+// 			reply->status = -1;
+// 			return -1;
+// 		} else {
+// 			lseek(fd, block_offset, SEEK_SET);
+// 			read(fd, &reply->buffer, 4096);
+// 			printf("server_read: Reading Buffer value =%s\n",reply->buffer);
+// 			reply->status = 0;
+// 			return 0;
+// 		}
+// 	}
+// }
+
 int Server_Read(int INODE_num, char *buffer, int block){
 	INODE node;
 	if(get_INODE(INODE_num, &node) == -1)
@@ -427,6 +456,93 @@ int Server_Unlink(int pinum, char *name){
 	update_CR(INODE_num);
 	return 0;
 }
+
+// int server_unlink(int fd,struct checkpoint* CPR_pointer, struct payload* data, struct payload * reply ){
+// 	   reply->status=-1;
+// 	   reply->inum=-1;
+// 	   //Check CPR inodemap pointer array
+// 	   struct checkpoint CPR=*CPR_pointer;
+// 	   int inode_map_index=data->pinum/16;
+// 	   //invalid pinum
+// 	   if (inode_map_index>255 || inode_map_index<0){
+// 		   reply->status=-1;
+// 		   return -1;
+// 	   }
+// 	   int inode_map_offset = CPR.inodemap[inode_map_index];
+// 	   lseek(fd,inode_map_offset,SEEK_SET);
+// 	   struct inode_map inodemap;
+// 	   read(fd,&inodemap,sizeof(inodemap));
+//        //Get inodemap
+// 	   int inode_index = (data->pinum)%16;
+// 	   int inode_offset = inodemap.node[inode_index];
+// 	   lseek(fd,inode_offset,SEEK_SET);
+// 	   struct INODE parent_inode;
+// 	   //Get Parent Directory Inode
+// 	   read(fd,&parent_inode,sizeof(parent_inode));
+// 	   //Search if 'name' already exists
+// 	   MFS_DirEnt_t dir_block_array[128];
+// 	   MFS_DirEnt_t* dir_block =dir_block_array;// (MFS_DirEnt_t*)malloc(4096);
+// 	   MFS_DirEnt_t* dir_block_start=dir_block;
+// 	   MFS_DirEnt_t* dir_block_end=&dir_block_array[128]+sizeof(MFS_DirEnt_t);
+// 	   int found=0;
+// 	   int parent_data_block_index=0;
+// 	   for (;parent_data_block_index<14;parent_data_block_index++){
+// 		   int dir_offset=parent_inode.data[parent_data_block_index];
+// 		   lseek(fd,dir_offset,SEEK_SET);
+// 		   read(fd,dir_block,4096);
+
+// 		   //Search for file/directory in pinum 
+// 		   while(dir_block!= dir_block_end && dir_block->inum!=-1){//strcmp(dir_block->name, "") != 0){
+// 			   if(strcmp(dir_block->name,data->name)==0){
+// 				   printf("File/Directory exists\n");
+// 				   found=1;
+// 				   reply->inum= dir_block->inum; 
+// 				   //We need to remove this entry
+// 				   //if dir first check if dir is empty
+// 				   if(data->type==1){
+// 					   //check if dir empty
+// 					   struct INODE inode;
+// 					   int status = get_inode(fd,&CPR,dir_block->inum,&inode);
+// 					   //assert(status==0);
+// 					   if (status==-1){
+// 						   printf("Illegal inode!!!\n");
+// 						   return -1;
+// 					   }
+// 					   if (inode.size>3*sizeof(MFS_DirEnt_t)){
+// 						   reply->status=-1;
+// 						   printf("Directory not empty!\n");
+// 						   return -1;
+// 					   }
+// 					   else{
+// 						strcpy(dir_block->name,"");
+// 						dir_block->inum=-1;						   
+// 					   }
+// 				   }
+// 				   else{
+// 					   strcpy(dir_block->name,"");
+// 					   dir_block->inum=-1;
+// 				   }
+// 				   break;
+// 			   }
+// 			   dir_block++;
+// 		   }
+// 		   if(found){
+// 			   //if the file was found, we have updated the data block
+// 			   //write the data block to EoLog
+// 			   int unlink_block_offset=lseek(fd,0,CPR_pointer->log_end);
+// 			   write(fd,dir_block_start,4096);
+// 			   //update block offset in inode
+// 			   parent_inode.data[parent_data_block_index] = unlink_block_offset;
+// 			   int status = write_inode_etc( fd, CPR_pointer, &parent_inode,&inodemap, data->pinum);
+// 			   if(status==-1){
+// 				   printf("unlink: couldnt update data block with removed file/dir\n");
+// 				   return -1;
+// 			   }
+// 			   break;}
+// 	   }
+// 	   reply->status=0;
+// 	   return reply->inum;
+// }
 
 int Server_Shutdown() {
 	fsync(fd);
