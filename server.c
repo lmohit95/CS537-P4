@@ -610,10 +610,10 @@ void serverListen(int port)
     printf("Starting server...\n");
     while (1) {
 		struct sockaddr_in s;
-		Net_Packet packet;
-		int rc = UDP_Read(sd, &s, (char *)&packet, sizeof(Net_Packet));
+		Payload packet;
+		int rc = UDP_Read(sd, &s, (char *)&packet, sizeof(Payload));
 		if (rc > 0) {
-		    Net_Packet responsePacket;
+		    Payload responsePacket;
 
 		    if (packet.op == 0) {
 				responsePacket.inum = Server_Lookup(packet.inum, packet.name);
@@ -630,7 +630,7 @@ void serverListen(int port)
 			}
 
 		    responsePacket.op = 6;
-		    rc = UDP_Write(sd, &s, (char*)&responsePacket, sizeof(Net_Packet));
+		    rc = UDP_Write(sd, &s, (char*)&responsePacket, sizeof(Payload));
 		    if(packet.op == 7)
 		    	Server_Shutdown();
 		}

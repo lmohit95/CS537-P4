@@ -13,7 +13,7 @@
 char* serverHostname;
 int serverPort;
 
-int sendPacket(char *hostname, int port, Net_Packet *sentPacket, Net_Packet *responsePacket, int maxTries) {
+int sendPacket(char *hostname, int port, Payload *sentPacket, Payload *responsePacket, int maxTries) {
     int sd = UDP_Open(0);
     if(sd < -1) {
         return -1;
@@ -33,10 +33,10 @@ int sendPacket(char *hostname, int port, Net_Packet *sentPacket, Net_Packet *res
     do {
         FD_ZERO(&rfds);
         FD_SET(sd,&rfds);
-        UDP_Write(sd, &addr, (char*)sentPacket, sizeof(Net_Packet));
+        UDP_Write(sd, &addr, (char*)sentPacket, sizeof(Payload));
         if(select(sd+1, &rfds, NULL, NULL, &tv))
         {
-            rc = UDP_Read(sd, &addr2, (char*)responsePacket, sizeof(Net_Packet));
+            rc = UDP_Read(sd, &addr2, (char*)responsePacket, sizeof(Payload));
             if(rc > 0)
             {
                 UDP_Close(sd);
@@ -59,8 +59,8 @@ int MFS_Lookup(int pinum, char *name){
 	if(checkName(name) < 0)
 		return -1;
 
-	Net_Packet sentPacket;
-	Net_Packet responsePacket;
+	Payload sentPacket;
+	Payload responsePacket;
 
 	sentPacket.inum = pinum;
 	sentPacket.op = 0;
@@ -74,8 +74,8 @@ int MFS_Lookup(int pinum, char *name){
 }
 
 int MFS_Stat(int inum, MFS_Stat_t *m) {
-	Net_Packet sentPacket;
-	Net_Packet responsePacket;
+	Payload sentPacket;
+	Payload responsePacket;
 
 	sentPacket.inum = inum;
 	sentPacket.op = 1;
@@ -88,8 +88,8 @@ int MFS_Stat(int inum, MFS_Stat_t *m) {
 }
 
 int MFS_Write(int inum, char *buffer, int block){
-	Net_Packet sentPacket;
-	Net_Packet responsePacket;
+	Payload sentPacket;
+	Payload responsePacket;
 
 	sentPacket.inum = inum;
 	//strncpy(sentPacket.buffer, buffer, BUFFER_SIZE);
@@ -105,8 +105,8 @@ int MFS_Write(int inum, char *buffer, int block){
 
 int MFS_Read(int inum, char *buffer, int block){
 
-	Net_Packet sentPacket;
-	Net_Packet responsePacket;
+	Payload sentPacket;
+	Payload responsePacket;
 
 	sentPacket.inum = inum;
 	sentPacket.block = block;
@@ -126,8 +126,8 @@ int MFS_Creat(int pinum, int type, char *name){
 	if(checkName(name) < 0)
 		return -1;
 
-	Net_Packet sentPacket;
-	Net_Packet responsePacket;
+	Payload sentPacket;
+	Payload responsePacket;
 
 	sentPacket.inum = pinum;
 	sentPacket.type = type;
@@ -146,8 +146,8 @@ int MFS_Unlink(int pinum, char *name){
 	if(checkName(name) < 0)
 		return -1;
 	
-	Net_Packet sentPacket;
-	Net_Packet responsePacket;
+	Payload sentPacket;
+	Payload responsePacket;
 
 	sentPacket.inum = pinum;
 	sentPacket.op = 5;
@@ -160,7 +160,7 @@ int MFS_Unlink(int pinum, char *name){
 }
 
 int MFS_Shutdown(){
-	Net_Packet sentPacket, responsePacket;
+	Payload sentPacket, responsePacket;
 	sentPacket.op = 7;
 
 
