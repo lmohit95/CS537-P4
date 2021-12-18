@@ -1,11 +1,11 @@
-#define NBLOCKS 	14
-#define NINODES 	4096
-#define CPRSIZE		6
-#define BLOCKSIZE	4096
-#define DIRENTRYSIZE	32
-#define NENTRIES	(BLOCKSIZE/DIRENTRYSIZE)
-#define NAMELENGTH	28
-#define BUFFER_SIZE (4096)
+#define NUM_BLOCKS 	14
+#define NUM_INODES 	4096
+#define CHECK_POINT_SIZE	6
+#define BLOCK_SIZE	4096
+#define DSIZE	32
+#define NUM_ENTRIES	(BLOCK_SIZE/DSIZE)
+#define MAX_NAME_LEN	28
+#define BUFFERSIZE (4096)
 #define MAX_NAME_SIZE (28)
 
 
@@ -16,21 +16,21 @@ typedef struct __Payload {
 	int type;
 
 	char name[MAX_NAME_SIZE];
-	char buffer[BUFFER_SIZE];
+	char buffer[BUFFERSIZE];
 	MFS_Stat_t stat;
 } Payload;
 
 typedef struct __dir_entries {
-	char names[NENTRIES][NAMELENGTH];
-	int  inums[NENTRIES];
+	char names[NUM_ENTRIES][MAX_NAME_LEN];
+	int  inums[NUM_ENTRIES];
 } dir_entries;
 
 typedef struct __INODE {
 	int inum;
 	int size;
 	int type;
-	int filled[NBLOCKS];
-	int data[NBLOCKS];
+	int filled[NUM_BLOCKS];
+	int data[NUM_BLOCKS];
 } INODE;
 
 int get_INODE(int inum, INODE* n);

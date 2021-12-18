@@ -92,7 +92,7 @@ int MFS_Write(int inum, char *buffer, int block){
 	Payload responsePayload;
 
 	sentPayload.inum = inum;
-	memcpy(sentPayload.buffer, buffer, BUFFER_SIZE);
+	memcpy(sentPayload.buffer, buffer, BUFFERSIZE);
 	sentPayload.block = block;
 	sentPayload.op = 2;
 	
@@ -115,7 +115,7 @@ int MFS_Read(int inum, char *buffer, int block){
 		return -1;
 
 	if(responsePayload.inum > -1)
-		memcpy(buffer, responsePayload.buffer, BUFFER_SIZE);
+		memcpy(buffer, responsePayload.buffer, BUFFERSIZE);
 	
 	return responsePayload.inum;
 }
