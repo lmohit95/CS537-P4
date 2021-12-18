@@ -10,17 +10,17 @@
 #include <unistd.h>
 #include "lfs.h"
 
-char* serverHostname;
-int serverPort;
+char* host_name;
+int port_number;
 
-int sendPacket(char *hostname, int port, Payload *sentPacket, Payload *responsePacket, int maxTries) {
+int sendPacket(Payload *sentPacket, Payload *responsePacket, int maxTries) {
     int sd = UDP_Open(0);
     if(sd < -1) {
         return -1;
     }
 
     struct sockaddr_in addr, addr2;
-    int rc = UDP_FillSockAddr(&addr, hostname, port);
+    int rc = UDP_FillSockAddr(&addr, host_name, port_number);
     if(rc < 0) {
         return -1;
     }
@@ -49,9 +49,9 @@ int sendPacket(char *hostname, int port, Payload *sentPacket, Payload *responseP
 }
 
 int MFS_Init(char *hostname, int port) {
-	serverHostname = malloc(strlen(hostname) + 1);
-	strcpy(serverHostname, hostname);
-	serverPort = port;
+	host_name = malloc(strlen(hostname) + 1);
+	strcpy(host_name, hostname);
+	port_number = port;
 	return 0;
 }
 
@@ -65,7 +65,7 @@ int MFS_Lookup(int pinum, char *name){
 	sentPacket.inum = pinum;
 	sentPacket.op = 0;
 	strcpy((char*)&(sentPacket.name), name);
-	int rc = sendPacket(serverHostname, serverPort, &sentPacket, &responsePacket, 3);
+	int rc = sendPacket(&sentPacket, &responsePacket, 3);
 	if(rc < 0)
 		return -1;
 	
@@ -80,7 +80,7 @@ int MFS_Stat(int inum, MFS_Stat_t *m) {
 	sentPacket.inum = inum;
 	sentPacket.op = 1;
 
-	if(sendPacket(serverHostname, serverPort, &sentPacket, &responsePacket, 3) < 0)
+	if(sendPacket(&sentPacket, &responsePacket, 3) < 0)
 		return -1;
 
 	memcpy(m, &(responsePacket.stat), sizeof(MFS_Stat_t));
@@ -97,7 +97,7 @@ int MFS_Write(int inum, char *buffer, int block){
 	sentPacket.block = block;
 	sentPacket.op = 2;
 	
-	if(sendPacket(serverHostname, serverPort, &sentPacket, &responsePacket, 3) < 0)
+	if(sendPacket(&sentPacket, &responsePacket, 3) < 0)
 		return -1;
 	
 	return responsePacket.inum;
@@ -112,7 +112,7 @@ int MFS_Read(int inum, char *buffer, int block){
 	sentPacket.block = block;
 	sentPacket.op = 3;
 	
-	if(sendPacket(serverHostname, serverPort, &sentPacket, &responsePacket, 3) < 0)
+	if(sendPacket(&sentPacket, &responsePacket, 3) < 0)
 		return -1;
 
 	if(responsePacket.inum > -1)
@@ -135,14 +135,13 @@ int MFS_Creat(int pinum, int type, char *name){
 
 	strcpy(sentPacket.name, name);
 	
-	if(sendPacket(serverHostname, serverPort, &sentPacket, &responsePacket, 3) < 0)
+	if(sendPacket(&sentPacket, &responsePacket, 3) < 0)
 		return -1;
 
 	return responsePacket.inum;
 }
 
 int MFS_Unlink(int pinum, char *name){
-
 	if(checkName(name) < 0)
 		return -1;
 	
@@ -153,7 +152,7 @@ int MFS_Unlink(int pinum, char *name){
 	sentPacket.op = 5;
 	strcpy(sentPacket.name, name);
 	
-	if(sendPacket(serverHostname, serverPort, &sentPacket, &responsePacket, 3) < 0)
+	if(sendPacket(&sentPacket, &responsePacket, 3) < 0)
 		return -1;
 
 	return responsePacket.inum;
@@ -162,9 +161,7 @@ int MFS_Unlink(int pinum, char *name){
 int MFS_Shutdown(){
 	Payload sentPacket, responsePacket;
 	sentPacket.op = 7;
-
-
-	if(sendPacket(serverHostname, serverPort, &sentPacket, &responsePacket, 3) < 0)
+	if(sendPacket(&sentPacket, &responsePacket, 3) < 0)
 		return -1;
 	
 	return 0;
