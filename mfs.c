@@ -49,8 +49,6 @@ int sendPacket(char *hostname, int port, Net_Packet *sentPacket, Net_Packet *res
 }
 
 int MFS_Init(char *hostname, int port) {
-	if(port < 0 || strlen(hostname) < 1)
-		return -1;
 	serverHostname = malloc(strlen(hostname) + 1);
 	strcpy(serverHostname, hostname);
 	serverPort = port;
