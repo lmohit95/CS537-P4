@@ -609,28 +609,28 @@ void serverListen(int port)
     printf("Starting server...\n");
     while (1) {
 		struct sockaddr_in s;
-		Payload packet;
-		int rc = UDP_Read(sd, &s, (char *)&packet, sizeof(Payload));
+		Payload payload;
+		int rc = UDP_Read(sd, &s, (char *)&payload, sizeof(Payload));
 		if (rc > 0) {
-		    Payload responsePacket;
+		    Payload responsePayload;
 
-		    if (packet.op == 0) {
-				responsePacket.inum = Server_Lookup(packet.inum, packet.name);
-			} else if (packet.op == 1) {
-				responsePacket.inum = Server_Stat(packet.inum, &(responsePacket.stat));
-			} else if (packet.op == 2) {
-				responsePacket.inum = Server_Write(packet.inum, packet.buffer, packet.block);
-			} else if (packet.op == 3) {		    	
-				responsePacket.inum = Server_Read(packet.inum, responsePacket.buffer, packet.block);
-			} else if (packet.op == 4) {
-				responsePacket.inum = Server_Creat(packet.inum, packet.type, packet.name);
-			} else if (packet.op == 5) {
-				responsePacket.inum = Server_Unlink(packet.inum, packet.name);
+		    if (payload.op == 0) {
+				responsePayload.inum = Server_Lookup(payload.inum, payload.name);
+			} else if (payload.op == 1) {
+				responsePayload.inum = Server_Stat(payload.inum, &(responsePayload.stat));
+			} else if (payload.op == 2) {
+				responsePayload.inum = Server_Write(payload.inum, payload.buffer, payload.block);
+			} else if (payload.op == 3) {		    	
+				responsePayload.inum = Server_Read(payload.inum, responsePayload.buffer, payload.block);
+			} else if (payload.op == 4) {
+				responsePayload.inum = Server_Creat(payload.inum, payload.type, payload.name);
+			} else if (payload.op == 5) {
+				responsePayload.inum = Server_Unlink(payload.inum, payload.name);
 			}
 
-		    responsePacket.op = 6;
-		    rc = UDP_Write(sd, &s, (char*)&responsePacket, sizeof(Payload));
-		    if(packet.op == 7)
+		    responsePayload.op = 6;
+		    rc = UDP_Write(sd, &s, (char*)&responsePayload, sizeof(Payload));
+		    if(payload.op == 7)
 		    	Server_Shutdown();
 		}
 	}
